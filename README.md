@@ -2,29 +2,102 @@
 
 Next.js App Router, TypeScript, Supabase and Vercel. FRAME/SHIFT is a provisional agency name. The portfolio visuals are original AI-generated concept studies, visibly labelled in the interface. They are not actual client commissions, testimonials or endorsements.
 
+## Live status
+
+- Website: https://frameshift-studio.vercel.app
+- GitHub: https://github.com/Matthewcleary1/frameshift-studio
+- Supabase project: `frameshift-studio` (`mcwblzbttlionsuwvxbb`), Paris / `eu-west-3`
+- Production application deployment: Vercel deployment `dpl_81SACdtmJ8XFrD38sGnBWGB3Zms5`
+- Validated application source commit: `238f6c8c69117c9c55fae72c1b6e9956286c0c51`
+
+The application, portfolio database, storage assets and enquiry backend are live. The canonical homepage, project page and project brief page have been smoke-tested in production and return 200 responses. The production build passes TypeScript and Vercel reports no runtime-error clusters after deployment.
+
+Search engine indexing remains intentionally disabled while the brand and launch content are provisional.
+
 ## What is implemented
 
-- Responsive agency homepage with original cinematic images, production approaches, process and FAQs.
+- Responsive agency homepage with original cinematic concept imagery, production approaches, process and FAQs.
 - Portfolio filters and individually addressable concept pages.
-- Three-stage project brief with browser and server validation, retained form data when navigating between steps, accessible errors and explicit confirmation after a successful database insert.
-- Server-only Supabase integration for public published projects and private enquiries.
-- A service-only PostgreSQL function for atomic enquiry insertion, idempotent retries and shared rate limiting across server instances.
-- Database constraints, explicit grants, RLS on every table and no public enquiry access.
+- Three-stage project brief with Zod validation, retained form state, accessible errors, a honeypot and idempotent request IDs.
+- Dedicated Supabase Postgres database for portfolio content and private enquiries.
+- Public Supabase Storage bucket for the three WebP portfolio assets.
+- Supabase Edge Function for enquiry validation and submission.
+- Service-only PostgreSQL RPC for atomic enquiry insertion, idempotent retries and shared rate limiting.
+- Database constraints, explicit grants and RLS on every application table.
 - Reduced-motion support, keyboard navigation, local font assets, metadata and custom error/404 pages.
+- Security headers including `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and a restrictive `Permissions-Policy`.
 
-## Deployment status
+## Architecture
 
-Live site: https://frameshift-studio.vercel.app
+### Portfolio
 
-GitHub: https://github.com/Matthewcleary1/frameshift-studio
+`agency_projects` stores portfolio metadata. Visitors using the public Supabase role can select rows only when `published = true`; drafts remain hidden by RLS.
 
-The application is deployed successfully on Vercel and the production build passes TypeScript. The dedicated Supabase project is not yet provisioned, so the site currently uses the source-controlled concept portfolio and keeps enquiry submission disabled rather than pretending to save a brief.
+The three current concept images live in the public `portfolio` Storage bucket. Next.js reads the published project rows from Supabase and optimizes the corresponding Storage images through `next/image`.
 
-A fresh Supabase project cost check for the target `mcleary.app` organisation reports €0/month. Provisioning remains intentionally pending until that zero-cost creation is explicitly confirmed. No existing Supabase project or user record is modified by this repository.
+### Enquiries
 
-Search engine indexing remains disabled while branding and content are provisional.
+The browser submits project briefs directly to the `submit-enquiry` Supabase Edge Function. Only public Supabase credentials are sent to the browser; no service-role credential is stored in or exposed by Vercel.
 
-The reviewed database schema is source-controlled both as `supabase/schema.sql` and as the versioned migration `supabase/migrations/20260909214600_agency_schema.sql`. It has not yet been applied to a live database.
+The Edge Function:
+
+1. Restricts browser origins to FRAME/SHIFT production, FRAME/SHIFT Vercel previews and local development.
+2. Handles CORS preflight explicitly.
+3. Limits request size and validates every field again at the edge.
+4. Rejects the honeypot field when populated.
+5. Hashes the client IP before storage.
+6. Calls the service-only `agency_submit_enquiry` PostgreSQL function using Supabase's internal service credential.
+
+`agency_submit_enquiry` uses advisory transaction locks so retries are idempotent and concurrent requests cannot bypass the shared rate limits. Limits are currently 3 accepted submissions per email address per hour and 10 per hashed IP per hour.
+
+### Database access
+
+Verified permission matrix:
+
+- `anon` / `authenticated`: may select published `agency_projects` only.
+- `anon` / `authenticated`: cannot select or insert `agency_enquiries`.
+- `anon` / `authenticated`: cannot execute `agency_submit_enquiry`.
+- `service_role`: may execute `agency_submit_enquiry`.
+
+The Supabase security advisor reports the absence of a public policy on `agency_enquiries` as informational; that is deliberate because the table is intended to have no public row access. The rate-limit indexes may initially appear as unused on a new database but are required by the submission checks.
+
+## Database setup
+
+The reviewed schema is source-controlled as:
+
+- `supabase/schema.sql`
+- `supabase/migrations/20260909214600_agency_schema.sql`
+
+The versioned migration has been applied to the live FRAME/SHIFT Supabase project and `supabase/seed.sql` has been run. The seed currently publishes three labelled concept studies:
+
+- `beyond-the-road`
+- `a-different-current`
+- `a-new-nature`
+
+`node --experimental-strip-types scripts/generate-seed.mjs` can regenerate the seed from `lib/projects.ts`.
+
+### Main database objects
+
+`agency_projects`: published/unpublished portfolio entries. Only published rows are readable by visitors.
+
+`agency_enquiries`: private incoming project briefs. Status values are `new`, `reviewing`, `contacted`, `closed`. There is no public admin account or web inbox in this scope.
+
+`agency_submit_enquiry`: service-role-only RPC using `SECURITY INVOKER`, an empty search path, explicit grants, idempotency and shared rate limits.
+
+## Verification completed
+
+The live backend has been tested end to end with a clearly marked synthetic enquiry:
+
+- CORS preflight returned 204 with the production origin allowed.
+- Submission returned 201 and a valid `FS-...` reference.
+- The expected row was verified in `agency_enquiries` exactly once.
+- The marked test row was then deleted.
+- A separate transaction-only RPC smoke test was rolled back after returning a valid reference.
+- Portfolio Storage assets were checked against the source WebP byte sizes after import.
+- Supabase grants/RLS were queried directly to verify the permission matrix above.
+- Vercel production build, TypeScript, route generation and canonical URL smoke tests passed.
+
+Temporary import/test endpoints used during provisioning have been disabled after verification.
 
 ## Local setup
 
@@ -36,48 +109,32 @@ npm run build
 npm test
 ```
 
-For local development, copy `.env.example` to `.env.local`, fill the required values after provisioning Supabase, then run `npm run dev`. No environment secrets belong in Git.
+For local development:
 
-## Supabase setup
+```sh
+cp .env.example .env.local
+npm run dev
+```
 
-Use a dedicated project for this agency. Recheck pricing immediately before provisioning and create only after the owner confirms the displayed cost.
-
-1. Create the confirmed project in the target organisation and wait until it is healthy.
-2. Apply `supabase/migrations/20260909214600_agency_schema.sql` through Supabase's migration workflow. Do not paste an untracked variation into production.
-3. Run `supabase/seed.sql` once to add the explicitly labelled concept portfolio. `node --experimental-strip-types scripts/generate-seed.mjs` regenerates the seed from `lib/projects.ts`.
-4. Run Supabase security advisors. Verify published projects can be read with the publishable key, drafts cannot be read, and both enquiry table access and the submission function are denied to `anon` and `authenticated`.
-5. Copy the project URL, publishable key and secret key into Vercel environment variables through the account's secure controls. The secret is server-only and must never be prefixed `NEXT_PUBLIC_`.
-6. Submit one clearly marked test brief from the deployed website, verify exactly one database row, and retry the same request ID to verify idempotency. Verify malformed payloads and excessive submissions are rejected. Keep or delete only the known test record as explicitly authorised.
-
-### Tables
-
-`agency_projects`: publish/unpublish portfolio entries from Supabase Table Editor; only published rows can be read by visitors. Images refer to versioned assets in `public/images`.
-
-`agency_enquiries`: private incoming project briefs, accessible through the authenticated Supabase project dashboard and the server's secret-key client. Status values: `new`, `reviewing`, `contacted`, `closed`. There is no public admin account or web inbox in this scope.
-
-`agency_submit_enquiry`: only executable by `service_role`; `SECURITY INVOKER`, an empty search path and explicit grants. The function shares rate limits across application instances (3 requests per email/hour, 10 per hashed IP/hour) and returns the existing reference when a request is retried.
-
-### Environment variables
+The production app has safe public fallbacks for the Supabase URL and public keys. The environment variables below are therefore optional overrides rather than secrets:
 
 | Name | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Canonical full origin, without a trailing slash |
-| `SUPABASE_URL` | Dedicated Supabase project URL |
-| `SUPABASE_PUBLISHABLE_KEY` | Public portfolio access, still used server-side |
-| `SUPABASE_SECRET_KEY` | Private server-side enquiry insert via service-only RPC |
+| `NEXT_PUBLIC_SITE_URL` | Optional canonical full origin for local/config use |
+| `SUPABASE_URL` | Supabase project URL override |
+| `SUPABASE_PUBLISHABLE_KEY` | Public Data API key override |
+| `SUPABASE_EDGE_AUTH_KEY` | Public legacy anon JWT used to authenticate Edge Function requests |
 
-Vercel's trusted `VERCEL_URL` and `VERCEL_PROJECT_PRODUCTION_URL` are also accepted as request origins. Origin checks prevent ordinary cross-site browser submission; they are not presented as bot protection. The database rate limits and honeypot provide basic abuse controls. For higher-volume campaigns, add a managed challenge or upstream rate limiting.
+Do not add a Supabase service-role/secret key to browser code or a `NEXT_PUBLIC_*` variable. The privileged credential used by the enquiry workflow remains inside Supabase's Edge Function environment.
 
 ## GitHub and Vercel
 
-The source repository is `Matthewcleary1/frameshift-studio`. The existing Vercel project is `frameshift-studio`, with production hosted at `frameshift-studio.vercel.app`. The current production deployment was built successfully with Next.js 16.3.4 and Node 24.
+The source repository is `Matthewcleary1/frameshift-studio`. The existing Vercel project is `frameshift-studio` and production is hosted at `frameshift-studio.vercel.app`.
 
-The Vercel project is not yet using native Git integration, so the current production deployment and the GitHub repository should be treated as separate until the repository is connected to the existing Vercel project. Once connected, use `main` as the production branch and let subsequent pushes deploy through Vercel's Git integration.
+Native Vercel Git integration is not yet connected. The validated production release was deployed to the existing Vercel project from an immutable GitHub commit archive, so the running application code is tied to commit `238f6c8c69117c9c55fae72c1b6e9956286c0c51`. This README update is documentation-only and does not alter the deployed application.
 
-Before inviting enquiries, replace provisional branding where needed, confirm agency contact and privacy details, apply the Supabase migration and seed, set the environment variables, redeploy, and verify the database flow. Real client work can replace the concept rows when supplied. Enable indexing only after final content is approved. Email notifications and client authentication are not included; incoming briefs are reviewed in Supabase.
+For normal future continuous deployment, connect this GitHub repository to the existing Vercel project and use `main` as the production branch. Until then, a GitHub push alone should not be assumed to update production.
 
-## Verification
+## Before public launch
 
-`npm run build` compiles production routes and checks TypeScript. `npm test` checks field boundaries, permitted options, consent, normalization and exclusion of client-supplied status/ownership fields.
-
-The latest Vercel production build completed successfully, TypeScript passed, `/`, `/start`, `/privacy`, `/work/[slug]`, and `/api/enquiries` were generated, and Vercel reported no runtime error clusters in the last 24 hours. Hosted Supabase persistence and RLS testing remain pending until the dedicated database exists.
+The technical submission path is live, but the site remains deliberately `noindex, nofollow`. Before treating it as the final public agency launch, confirm the final brand name, company/contact/privacy details and portfolio content, then enable indexing. Real commissioned work can replace or supplement the clearly labelled concept studies when available.
