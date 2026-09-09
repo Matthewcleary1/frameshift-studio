@@ -4,7 +4,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Arrow } from './icons';
 import { productionTypes, budgetOptions, timelineOptions, deliverableOptions, briefSchema } from '@/lib/brief-schema';
 
-export function BriefForm({ enabled }: { enabled: boolean }) {
+type SubmissionConfig = {
+  endpoint: string;
+  publishableKey: string;
+  edgeAuthKey: string;
+};
+
+export function BriefForm({ enabled, submission }: { enabled: boolean; submission: SubmissionConfig }) {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -25,7 +31,16 @@ export function BriefForm({ enabled }: { enabled: boolean }) {
     if (!result.success) { setError('Please check your details and complete every required field.'); return; }
     setBusy(true);
     try {
-      const response = await fetch('/api/enquiries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result.data), signal: AbortSignal.timeout(20000) });
+      const response = await fetch(submission.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: submission.publishableKey,
+          Authorization: `Bearer ${submission.edgeAuthKey}`,
+        },
+        body: JSON.stringify(result.data),
+        signal: AbortSignal.timeout(20000),
+      });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? 'Your brief could not be sent. Please try again.');
       setReference(body.reference);
