@@ -1,0 +1,18 @@
+{
+  "mode": "built-in image_gen",
+  "generationCount": 3,
+  "requests": [
+    {
+      "key": "automotive",
+      "prompt": "Use case: ads-marketing\nAsset type: original full bleed website hero and speculative automotive concept campaign cover for a cinematic hybrid AI production agency.\nPrimary request: Landscape 16:9 ultra-cinematic editorial photograph of an unbranded sculptural black sports car in crisp side profile, in an enormous sculptural rust-red desert canyon. A surreal floating reflective silver rectangular monolith hangs high above the car, with terracotta dust in the air.\nComposition/framing: expansive panoramic landscape, monumental canyon scale, car prominent enough to read at website hero size, balanced cinematic composition.\nStyle/medium: exceptionally believable, photographer-led luxury automotive campaign craft, fine sophisticated film grain.\nLighting/mood: natural late sun with deep expressive shadows.\nColor palette: rich terracotta, burnt orange and near-black, reflective silver.\nConstraints: one single finished image; no text, no labels, no typography, no logos, no real brands, no watermarks. This is an original speculative AI campaign concept."
+    },
+    {
+      "key": "fashion",
+      "prompt": "Use case: ads-marketing\nAsset type: original speculative high-fashion campaign cover for a cinematic hybrid AI production agency website.\nPrimary request: Landscape 4:3 high-fashion editorial on a rugged Mediterranean black-rock coast. A single adult woman wears a flowing vivid orange long dress, its fabric caught in the wind, against dark teal-blue sea and a panoramic rocky horizon.\nStyle/medium: photographer-led luxury editorial image, believable photographic craft, subtle fine film grain.\nComposition/framing: full-figure fashion portrait within an expansive landscape with powerful fabric movement and rugged coastal scale.\nLighting/mood: dramatic natural coastal light.\nColor palette: vivid orange, black volcanic rock, dark teal-blue water.\nConstraints: one single finished image, exactly one adult woman, no text, no labels, no branding, no logos, no watermarks. This is an original speculative AI campaign concept."
+    },
+    {
+      "key": "product",
+      "prompt": "Use case: ads-marketing\nAsset type: original speculative luxury product campaign cover for a cinematic hybrid AI production agency website.\nPrimary request: Landscape 4:3 surreal premium product campaign photograph of a single unbranded chartreuse translucent perfume bottle, balanced on dark wet rock, with a giant smooth citrus-yellow translucent orbit shape and tiny water droplets. Olive-black backdrop.\nStyle/medium: sophisticated high-end product photography, exceptionally physical product texture and precise glass refraction.\nComposition/framing: dramatic macro studio view, hero bottle sharply resolved, sculptural orbit shape balanced around the product.\nLighting/mood: dramatic macro studio lighting with luminous translucent edges, cinematic deep shadows.\nColor palette: chartreuse, citrus yellow, olive-black.\nMaterials/textures: transparent colored glass, condensed tiny water droplets, rough dark wet rock.\nConstraints: one single finished image, one unbranded perfume bottle, no labels, no text, no typography, no logos, no real brands, no watermarks. This is an original speculative AI campaign concept."
+    }
+  ]
+}
