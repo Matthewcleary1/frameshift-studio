@@ -9,9 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const projects = await getProjects();
+  const heroImage = projects.find(project => project.slug === 'beyond-the-road')?.image
+    ?? 'https://mcwblzbttlionsuwvxbb.supabase.co/storage/v1/object/public/portfolio/beyond-the-road.webp';
   return <><main id="main">
     <section className="hero" aria-labelledby="hero-heading">
-      <Image className="hero-image" src="/images/beyond-the-road.webp" alt="A cinematic automotive concept set in a surreal red desert" fill priority sizes="100vw" />
+      <Image className="hero-image" src={heroImage} alt="A cinematic automotive concept set in a surreal red desert" fill priority sizes="100vw" />
       <div className="hero-shade" />
       <div className="hero-top"><span className="eyebrow">INDEPENDENT HYBRID PRODUCTION STUDIO</span><span className="hero-coordinate">HUMAN × MACHINE</span></div>
       <div className="hero-copy"><h1 id="hero-heading">REAL CRAFT.<br /><span>UNREAL</span><br className="mobile-break" /> POSSIBILITIES.</h1><div className="hero-bottom"><p>Film. Photography. Generative AI.<br />One vision. Every way to make it.</p><Link href="#work" className="circle-link"><span>Explore the work</span><span className="circle"><Arrow /></span></Link></div></div>
